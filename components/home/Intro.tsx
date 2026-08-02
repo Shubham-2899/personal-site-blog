@@ -17,7 +17,7 @@ export function Intro() {
       <p className="mb-[18px] text-base leading-[1.7]">
         Based in {site.location}. I write here occasionally about the systems I
         build and the problems I run into. Reach me at{" "}
-        <ExternalLink href={`mailto:${site.email}`}>{site.email}</ExternalLink>,
+        <ExternalLink href={`mailto:${site.email}`}>Email</ExternalLink>,
         or find me on{" "}
         <ExternalLink href={site.github}>GitHub</ExternalLink> and{" "}
         <ExternalLink href={site.linkedin}>LinkedIn</ExternalLink>.
