@@ -58,6 +58,18 @@ const PATHS: Record<UsesIconName, ReactElement> = {
       <line x1="1" y1="14" x2="17" y2="14" />
     </>
   ),
+
+  triangle: <path d="M9 3l6.5 12h-13z" />,
+
+  server: (
+    <>
+      <rect x="2" y="3" width="14" height="5" rx="1.2" />
+      <rect x="2" y="10" width="14" height="5" rx="1.2" />
+      {/* Zero-length strokes render as dots under strokeLinecap="round". */}
+      <line x1="5" y1="5.5" x2="5" y2="5.5" />
+      <line x1="5" y1="12.5" x2="5" y2="12.5" />
+    </>
+  ),
 };
 
 export function UsesIcon({ name }: { name: UsesIconName }) {

@@ -15,8 +15,8 @@ export default function UsesPage() {
     <>
       <h1 className="mb-2 text-[22px] font-semibold text-fg">Uses</h1>
       <p className="text-base leading-[1.7]">
-        No hot takes here &mdash; just what&rsquo;s actually on my machine and
-        why, kept current as it changes.
+        No hot takes here. Just what&rsquo;s actually on my machine and why,
+        kept current as it changes.
       </p>
 
       {uses.map((group) => (

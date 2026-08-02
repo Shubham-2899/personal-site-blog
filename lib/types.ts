@@ -42,7 +42,9 @@ export type UsesIconName =
   | "spark"
   | "doc"
   | "bubble"
-  | "laptop";
+  | "laptop"
+  | "triangle"
+  | "server";
 
 export type UsesItem = {
   name: string;
