@@ -1,0 +1,66 @@
+---
+title: "Why I Rebuilt My Site Around Plain Text Files"
+slug: "hello-world"
+excerpt: "A short note on the setup behind this site — MDX files on disk, schema-validated at build time, and why that beat reaching for a CMS."
+date: "2026-08-02"
+category: "Engineering"
+tags: ["nextjs", "mdx", "typescript"]
+author: "Shubham Latake"
+draft: false
+featured: true
+---
+
+{/*
+  PLACEHOLDER POST — safe to delete once you publish your first real one.
+  It exists to prove the pipeline end to end: frontmatter validation, reading
+  time, heading extraction for the TOC, syntax highlighting and tag rendering.
+  Deleting this file is all it takes; nothing else references it.
+*/}
+
+I've restarted this site more than once. Every previous attempt died the same
+way: I'd pick a CMS, spend an evening wiring it up, and then never write
+anything, because publishing meant logging into a dashboard.
+
+So this version has no dashboard. A post is a file.
+
+## How it works
+
+Every post is an `.mdx` file in `content/blog/`. Writing means adding a file
+and committing it. The frontmatter is validated with zod when the file is
+read, which means a typo fails the build instead of quietly shipping a page
+with a missing date.
+
+```ts
+const frontmatterSchema = z.object({
+  title: z.string().min(1),
+  excerpt: z.string().min(1),
+  date: z.coerce.date(),
+  category: z.string().min(1),
+  tags: z.array(z.string()).default([]),
+  draft: z.boolean().default(false),
+});
+```
+
+That schema is the whole content model. Reading time is derived from the body
+rather than typed by hand, and the table of contents above is built by walking
+the markdown for `##` headings — using the same slugger the renderer uses, so
+the anchors always line up.
+
+## What I deliberately left out
+
+Categories are captured on every post from day one, but there are no category
+pages and no tag filtering yet. Both are a routing change whenever I want
+them, and neither needs the existing posts to be touched. Building navigation
+for six posts would have been building for an audience that doesn't exist.
+
+The same logic applies to search, comments and pagination. They're easy to add
+later and impossible to justify now.
+
+## The part that actually matters
+
+All the filesystem work lives in one module. Pages and components only ever
+receive typed objects, so if this ever does outgrow flat files, swapping in a
+real CMS means rewriting a single file.
+
+That constraint is doing the real work here. Not the file format — the fact
+that nothing else in the codebase knows or cares where posts come from.

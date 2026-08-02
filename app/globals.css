@@ -1,26 +1,160 @@
 @import "tailwindcss";
 
+/* Tailwind v4 defaults `dark:` to a media query; we drive theming from a class
+   on <html> (next-themes) so the toggle can override the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens
+
+   One warm neutral ramp (hue 75–80, chroma <= 0.012) carries the whole UI, with
+   a single terracotta accent as the only saturated colour. Dark mode is a
+   re-mix, not an inversion: hue shifts 80 -> 75 and the accent *gains*
+   lightness (50% -> 72%) so it stays legible on charcoal.
+--------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: oklch(98% 0.005 80);
+  --fg: oklch(22% 0.01 80);
+  --muted: oklch(46% 0.012 80);
+  --accent: oklch(50% 0.12 40);
+  --border: oklch(90% 0.008 80);
+  --pill: oklch(94% 0.008 80);
+  --selection: oklch(50% 0.12 40 / 0.18);
+  /* Tint opacity for the /uses icon badges. */
+  --badge-alpha: 0.12;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: oklch(16% 0.012 75);
+  --fg: oklch(92% 0.006 75);
+  --muted: oklch(64% 0.012 75);
+  --accent: oklch(72% 0.11 45);
+  --border: oklch(28% 0.012 75);
+  --pill: oklch(24% 0.012 75);
+  --selection: oklch(72% 0.11 45 / 0.25);
+  --badge-alpha: 0.18;
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-pill: var(--pill);
+
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Offset anchor targets so TOC jumps don't butt against the top edge. */
+    scroll-padding-top: 2rem;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  ::selection {
+    background: var(--selection);
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---------------------------------------------------------------------------
+   Code blocks
+
+   Shiki emits both palettes per token as CSS variables (defaultColor: false).
+   Light wins by default; `.dark` swaps to the dark set. The <pre> chrome uses
+   our own tokens so code blocks sit in the page rather than on top of it.
+--------------------------------------------------------------------------- */
+
+.shiki {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  background-color: var(--pill) !important;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.shiki code {
+  display: block;
+  width: fit-content;
+  min-width: 100%;
+  background: transparent;
+}
+
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion
+
+   The site's only animation: a soft rise on mount, staggered down each list.
+   Pure CSS, no scroll observer. Disabled wholesale under reduced-motion.
+--------------------------------------------------------------------------- */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fade-in-up 0.5s ease both;
+    animation-delay: var(--fade-delay, 0ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
