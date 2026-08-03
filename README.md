@@ -1,4 +1,4 @@
-# shubhamlatake.com
+# shubhamlatake.in
 
 Personal site and blog. Next.js 16 (App Router), TypeScript, Tailwind v4, MDX.
 
