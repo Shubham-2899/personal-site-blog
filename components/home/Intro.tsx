@@ -11,8 +11,7 @@ export function Intro() {
         I&rsquo;m a full stack engineer working mostly in the JavaScript and
         TypeScript ecosystem &mdash; React and Next.js on the front end, Node.js
         and NestJS on the back. Lately I&rsquo;ve been spending most of my time
-        on RBAC-heavy enterprise tools, CRM platforms, and moving legacy infra
-        onto event-driven, serverless architectures.
+        on quantum and AI-based applications, and enterprise CRM platforms.
       </p>
       <p className="mb-[18px] text-base leading-[1.7]">
         Based in {site.location}. I write here occasionally about the systems I
