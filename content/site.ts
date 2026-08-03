@@ -23,8 +23,13 @@ export const site = {
   description:
     "Full stack engineer working in the JavaScript and TypeScript ecosystem — React, Next.js, Node.js and serverless architecture on AWS. Notes on the systems I build.",
 
-  /** Square image in public/. Falls back to a monogram when missing. */
-  avatar: "/avatar.jpg",
+  /**
+   * Background-removed PNG in public/, square, alpha preserved — the subject
+   * sits straight on the page and reads in both themes. Statically imported by
+   * components/layout/Avatar.tsx, so replacing the file is enough; the path is
+   * kept here as the record of where it lives.
+   */
+  avatar: "/avatar.png",
 } as const;
 
 export const nav = [

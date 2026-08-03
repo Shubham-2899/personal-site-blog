@@ -1,40 +1,29 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
 import Image from "next/image";
 
 import { site } from "@/content/site";
+import avatarImage from "@/public/avatar.png";
 
 /**
- * Server component: checks for the avatar file at render time and falls back to
- * an initials monogram, so the header looks intentional before a photo is added.
+ * Statically imported rather than referenced as "/avatar.png".
+ *
+ * A string src goes through the optimizer at a stable URL (/_next/image?url=…),
+ * so replacing the photo leaves the old bytes cached under the same URL — on
+ * disk in .next/cache/images and again in the dev server's memory. A static
+ * import emits a content-hashed URL instead, so a new photo is always a new URL
+ * and can never be served stale. It also supplies the intrinsic dimensions.
  */
 export function Avatar() {
-  const hasPhoto = existsSync(path.join(process.cwd(), "public", site.avatar));
-
-  if (!hasPhoto) {
-    const initials = site.name
-      .split(" ")
-      .map((part) => part[0])
-      .join("");
-
-    return (
-      <div
-        aria-hidden
-        className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pill font-mono text-sm text-muted"
-      >
-        {initials}
-      </div>
-    );
-  }
-
   return (
     <Image
-      src={site.avatar}
+      src={avatarImage}
       alt={`Portrait of ${site.name}`}
-      width={64}
-      height={64}
+      // Render box, not the source size — keeps the request at 48/96px.
+      width={40}
+      height={40}
       priority
-      className="size-16 shrink-0 rounded-full object-cover"
+      // object-contain so the whole photo stays visible, and no radius: the
+      // source has no background, so there is no edge to round.
+      className="size-10 shrink-0 object-contain"
     />
   );
 }
