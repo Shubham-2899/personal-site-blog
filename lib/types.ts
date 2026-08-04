@@ -28,6 +28,8 @@ export type Certification = {
   initials: string;
   name: string;
   org: string;
+  /** Public verification page, where the issuer provides one. */
+  href?: string;
 };
 
 /** Keys of the icon set in components/uses/UsesIcon.tsx. */
