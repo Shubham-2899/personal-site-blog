@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 
@@ -82,6 +83,7 @@ export default function RootLayout({
             <Footer />
           </Container>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
