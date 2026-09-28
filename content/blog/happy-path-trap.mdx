@@ -1,0 +1,103 @@
+---
+title: "The Happy-Path Trap: Why Best-Case Numbers Mislead AI Pipeline Design"
+date: "2026-09-28"
+category: "ai-tech"
+excerpt: "A single-call AI design beats a two-call triage-then-build design on every happy-path benchmark. The fewer tokens, one round trip, lower cost. Run real, messy traffic through both and the ranking flips, because the benchmark measured the wrong request."
+tags: ["ai-engineering", "llm-pipelines", "system-design", "cost-optimization"]
+---
+
+## A Problem That Looked Simple
+
+A while back I worked on an AI chat application that, among other things, routed problems to quantum computing hardware alongside classical solvers (the quantum side is its own story, saved for another time).
+
+One idea sat at its center: let a user describe their problem in plain English, a budget to split across departments, a shift schedule to fill, a delivery route to plan. The system would take it from there: understand the request, build the right structure around it, solve it, and hand back a result.
+
+Said out loud, it sounds easy and straightforward: type a sentence, get an answer. For a tidy, complete request, it mostly was. It was the messy, incomplete ones that ended up teaching the real lesson, the one this piece is about.
+
+## The Benchmark That Looks Obvious
+
+On a clean, complete request, the smaller design wins every measurable comparison: fewer characters in the prompt, fewer tokens billed, one network call instead of two, a faster response. If you only ever benchmarked with well-formed input, you would ship it without a second thought.
+
+That benchmark is real, and the numbers below are real. It is also the wrong test, because it only checks what happens when the user does everything right, and in a conversational product, users very often do not. This is the story of two designs for the same feature, why the smaller one looks better, and why the bigger one is the one you would actually want running in production.
+
+## Design A: One Prompt, One Shot
+
+Design A is a single call. It takes the user's conversation, wraps it in one detailed prompt that explains every rule the output has to follow, and asks one model to do the whole job at once: figure out what kind of request this is, decide how to handle it, and produce the finished structured result, all in a single pass.
+
+If the result comes back malformed, Design A retries the same call, up to a few times, resending the entire prompt from scratch each time. It has no separate step that asks whether the request made sense in the first place, it only finds out by trying to complete it, and if the conversation was too vague to work with, it fills the gaps with generic placeholder content rather than stopping to say so.
+
+## Design B: Triage, Then Build
+
+Design B splits the same job into two calls. The first is small and cheap: it reads the conversation and decides two things: what kind of request this is, and whether there is enough substance to act on. If there is not, it stops right there and tells the user what is missing.
+
+Only requests that pass that check move on to the second call, the larger and more expensive step that actually builds the finished result, now working from a request the first call has already confirmed makes sense.
+
+```
+User's message → Quick triage call → Actionable?
+                                        ├─ yes → Full build call → Template ready
+                                        └─ no  → Ask for details
+```
+
+The two calls run one after another, not at the same time, because the second one needs the first one's answer before it can even start.
+
+## The Best-Case Numbers
+
+Measured on a single, well-formed request, the kind a developer tests with, Design A wins on every number that matters.
+
+| Metric | Design A (one call) | Design B (two calls) |
+| --- | --- | --- |
+| Prompt content sent | ~21,000 characters | ~26,000 characters |
+| Approx. tokens billed | ~5,300 | ~6,500 |
+| Model calls | 1 | 2 |
+| Sequential round trips | 1 | 2 |
+| User's conversation sent | once | twice, once per call |
+
+By this measurement the choice looks settled: Design A is smaller, cheaper, and faster, full stop. It is worth naming the one cost this table does not soften: for requests that are well-formed, Design B still pays for two sequential round trips instead of one. A fast, cheap triage call keeps that added latency small, but it is not zero, and a genuinely latency-sensitive product should weigh it rather than assume it away.
+
+## What Happens When the Input Isn't Clean
+
+Now send both designs something a real user actually types: "help me" or "I want to optimize something," with no goal, no details, nothing to build from.
+
+Design A does not know anything is wrong. It has no step that checks for this, so it runs its one full call anyway, the same large, expensive call it would run for a perfect request. Because it is built to always produce a finished result, it fills the empty gaps with generic placeholder content and reports success. For a vague budget-splitting request, that placeholder content might look like four invented department names with the total split evenly across them and confident-looking percentages attached, none of which the user ever mentioned. The user gets back something that looks like an answer but is not one, and nobody was told the input was the problem.
+
+Design B's first call catches this immediately. It is small and cheap, so checking whether the request makes sense costs almost nothing, and when the answer is no, the pipeline stops there. The large second call, the one that costs most of the money and most of the time, never runs at all.
+
+|  | Design A | Design B |
+| --- | --- | --- |
+| Cost of this request | Same as a good request, the full call runs anyway | A small fraction of a good request, the full call never runs |
+| What the user sees | A fabricated result, reported as success | An honest message explaining what is missing |
+
+## The Comparison That Actually Matters
+
+A conversational feature does not get one request at a time forever, it gets a mix, and vague or incomplete requests are ordinary, not rare. Say a modest quarter of incoming requests are not specific enough to act on; that is a conservative estimate for anything that accepts free text from real people, and as shown below, the conclusion holds even if the real number is considerably lower.
+
+Run 1,000 requests through each design under that assumption. Design A treats every request the same way, because it has no way to tell them apart before spending the money: all 1,000 get the full, expensive call. Design B's cheap first call filters out the roughly 250 that are not ready, so only the remaining 750 go on to the expensive call.
+
+There is a cost the best-case table left out, too: when Design A's full call returns malformed output, which happens more often on vague input, it retries the entire call from scratch. Assume a conservative 10% of Design A's calls need one retry. Design B's cheap triage call catches bad input before that cost is ever incurred.
+
+| Metric (1,000 requests, 25% incomplete) | Design A | Design B |
+| --- | --- | --- |
+| Expensive calls issued | 1,000 | 750 |
+| Cheap calls issued | 0 | 1,000 |
+| Retry calls issued (approx., at a 10% retry rate) | ~100 | 0 |
+| Approx. total tokens billed | ~5.83M | ~5.18M |
+| Incomplete requests answered honestly | 0 | 250 |
+
+Design B issues 1,000 extra calls, but they are the cheap kind, a small fraction of the cost of the expensive call it skips 250 times. Counting retries and tokens together, Design B bills roughly 11% fewer tokens overall despite making more calls, and it is the only one of the two that answers 250 users honestly instead of fabricating a result. That cost advantage does depend on how messy real traffic actually is: below roughly 12-13% incomplete requests, Design A's raw token bill comes out a touch lower, because triaging every request carries its own fixed cost. Above that threshold, which is not an aggressive bar for most products taking open-ended input from real people, Design B wins on cost too, and the margin grows from there. At any real volume past that point, that trade wins, and it is the opposite of what the best-case benchmark predicted.
+
+## The Principle
+
+The mistake is not in the arithmetic: Design A really is smaller and faster on a clean request, and it stays cheaper in raw tokens if your traffic happens to be unusually well-formed. The mistake is benchmarking against the request you wish you would get instead of the ones you will actually get. A few things follow from that:
+
+- Measure against your real input distribution, not the cleanest case you can construct. A demo request is not a traffic sample, and the cost comparison can flip depending on where your real distribution sits relative to a break-even point you should actually calculate, not assume.
+- Put a cheap check before an expensive step, not after it. Filtering late means paying full price, including the cost of retries, to learn what a cheap check would have told you for free.
+- Separate "should we do this?" from "do it." Once those are two steps instead of one, each can be priced, tested, and improved on its own terms.
+- Spend your most expensive resource only on requests that have already earned it, not on deciding whether they have.
+- When the input is bad, say so. A system that quietly fabricates a plausible answer is worse than one that honestly asks for more, even though the honest one looks like a "failure" in the logs.
+- Weigh the cost the safer design carries too. Design B is not free: it adds latency on the happy path even as it saves money overall. Naming that cost, rather than ignoring it, is part of what makes the rest of the argument trustworthy.
+
+## The Question to Ask Before You Ship
+
+Smaller and faster are properties of a benchmark, not of a system. A system is judged by what it costs and how it behaves across everything that actually reaches it, not by the one polite, complete request someone used to test it.
+
+Before choosing between a design that does everything in one confident step and one that checks first and builds second, ask a more useful question than "which one is smaller": what does each one do with the request that is not clean, and where does your real traffic actually sit relative to the numbers that answer that question? For most products taking input from real people, that answer, not the character count, is what should decide it.
